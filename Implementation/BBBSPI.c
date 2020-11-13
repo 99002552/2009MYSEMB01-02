@@ -14,10 +14,9 @@
 
 static void pabort(const char *s)
 {
-    prerror(s);
+    perror(s);
     abort();
 }
-
 
 static const char *device = "/dev/spidev0.1";
 static uint8_t mode;
@@ -26,10 +25,10 @@ static uint32_t speed=500000;
 static uint16_t delay;
 
 
-static void Transmitter()
+static void Transmitter(int fd)
 {
     int ret;
-    uint8_t Tx[]= {0x04, 0x03, 0x02, 0x01, 0xF0, 0x0F,};
+    uint8_t Tx[]= {0x01,};
 
     struct spi_ioc_transfer tr ={
         .tx_buf = (unsigned long)Tx,
@@ -53,6 +52,7 @@ static void Transmitter()
     puts("");
 }
 
+
 int main(int argc, char *argv[])
 {
     int ret=0,fd;
@@ -67,19 +67,17 @@ int main(int argc, char *argv[])
     ret=ioctl(fd,SPI_IOC_WR_MODE,&mode);
     if(ret==-1)
         pabort("Cannot set SPI Mode");
-iptables --append FORWARD --in-interface
-enx0cb2b7ccf4c8 -j ACCEPT
+
     //Setting the number of bits per word
     ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
     if(ret==-1)
         pabort("Cannot set bits per word");
-    
+        
     //Setting the speed
     ret = ioctl(fd,SPI_IOC_WR_MAX_SPEED_HZ, &speed);
     if(ret==-1)
         pabort("Cannot set max speed");
-
-    
+        
     printf("SPI Mode: %d\n",mode);
     printf("Bits per word: %d\n",bits);
     printf("Max speed: %d\n KHz",speed/1000);
@@ -87,7 +85,7 @@ enx0cb2b7ccf4c8 -j ACCEPT
 
     //Calling the transmitter function which is responsible for sending data to slave
     Transmitter(fd);
-
+    
     close(fd);
 
     return ret;
