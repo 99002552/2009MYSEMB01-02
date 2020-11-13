@@ -19,11 +19,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-extern void initialise_monitor_handles(void);
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,9 +43,7 @@ extern void initialise_monitor_handles(void);
 SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
-uint8_t buffer;
-#define SPI_SIZE 1
-uint8_t tx=1;
+#define DATA_SIZE 1
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,36 +56,7 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t local_time, sensor_time;
-uint32_t distance;
 
-
-void delay(uint8_t time)
-  {
-	  for(uint8_t i = 0; i < time; i ++ );
-  }
-
-uint32_t hcsr04_read (void)
- {
-     local_time=0;
-     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);  // pull the TRIG pin HIGH
-     delay(2);  // wait for 2 us
-
-
-     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);  // pull the TRIG pin HIGH
-     delay(10);  // wait for 10 us
-     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);  // pull the TRIG pin low
-
-           // read the time for which the pin is high
-
-     while (!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2)));  // wait for the ECHO pin to go high
-     while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_2))    // while the pin is high
-     {
-        local_time++;   // measure time for which the pin is high
-        delay (1);
-     }
-     return local_time;
-}
 /* USER CODE END 0 */
 
 /**
@@ -98,7 +66,9 @@ uint32_t hcsr04_read (void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	uint8_t buffer[DATA_SIZE];
+	uint8_t DistanceInCM=0;
+	uint8_t syson=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -129,35 +99,59 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  HAL_SPI_Receive(&hspi1, buffer, DATA_SIZE,HAL_MAX_DELAY);
+	  //HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+	  syson+=buffer[0];
+	  buffer[0]=0;
+	  //HAL_SPI_Receive_IT(&hspi1, buffer, DATA_SIZE);
+	  if(syson==1)
+	  {
+		  while(1){
+		  DistanceInCM=DistanceCall();
+		 if(DistanceInCM<=2)
+		  {
+			  HAL_GPIO_WritePin(LEDORANGE_GPIO_Port, LEDORANGE_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDRED_GPIO_Port, LEDRED_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDGREEN_GPIO_Port, LEDGREEN_Pin, GPIO_PIN_RESET);
 
+
+			  HAL_GPIO_WritePin(LEDBLUE_GPIO_Port,LEDBLUE_Pin, GPIO_PIN_SET);
+		  }
+		  else if(DistanceInCM>2 && DistanceInCM<=4)
+		  {
+			  HAL_GPIO_WritePin(LEDBLUE_GPIO_Port,LEDBLUE_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDORANGE_GPIO_Port, LEDORANGE_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDGREEN_GPIO_Port, LEDGREEN_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDRED_GPIO_Port, LEDRED_Pin, GPIO_PIN_SET);
+		  }
+		  else if(DistanceInCM>4 && DistanceInCM<=7)
+		  {
+			  HAL_GPIO_WritePin(LEDBLUE_GPIO_Port,LEDBLUE_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDRED_GPIO_Port, LEDRED_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDGREEN_GPIO_Port, LEDGREEN_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDORANGE_GPIO_Port, LEDORANGE_Pin, GPIO_PIN_SET);
+		  }
+		  else if(DistanceInCM>7 && DistanceInCM<=15)
+		  {
+			  HAL_GPIO_WritePin(LEDBLUE_GPIO_Port,LEDBLUE_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(LEDGREEN_GPIO_Port, LEDGREEN_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(LEDORANGE_GPIO_Port, LEDORANGE_Pin, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(LEDRED_GPIO_Port, LEDRED_Pin, GPIO_PIN_SET);
+		  }
+		  else
+		  {
+			  HAL_GPIO_WritePin(LEDBLUE_GPIO_Port,LEDBLUE_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDGREEN_GPIO_Port, LEDGREEN_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDORANGE_GPIO_Port, LEDORANGE_Pin, GPIO_PIN_RESET);
+			  HAL_GPIO_WritePin(LEDRED_GPIO_Port, LEDRED_Pin, GPIO_PIN_RESET);
+		  }
+		 }
+	  }
+	  else if(syson==2)
+	  {
+		  syson=0;
+	  }
     /* USER CODE BEGIN 3 */
-	      HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, 0);
-	 	  HAL_GPIO_WritePin(SlaveSelect_GPIO_Port, SlaveSelect_Pin, 0);
-	 	  HAL_SPI_Receive(&hspi1, buffer,SPI_SIZE, HAL_MAX_DELAY);
-	 	  HAL_GPIO_WritePin(SlaveSelect_GPIO_Port, SlaveSelect_Pin, 1);
-	  	  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, 1);
-
-	  	    initialise_monitor_handles();
-	  	  	  printf("%d\n",buffer);
-
-
-	  	  if(buffer==1)
-	  	  {
-	  		sensor_time = hcsr04_read();
-	  	    distance  = sensor_time * .034/2;
-	  	    delay(200);
-
-	  			 if(distance > 0 && distance < 5)
-	  			  {
-	  			  	  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, 0);
-	  			  	  HAL_GPIO_WritePin(SlaveSelect_GPIO_Port, SlaveSelect_Pin, 0);
-	  			  	  HAL_SPI_Transmit(&hspi1, &tx, 1, HAL_MAX_DELAY);
-	  			  	  HAL_GPIO_WritePin(SlaveSelect_GPIO_Port, SlaveSelect_Pin, 1);
-	  			  	  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, 1);
-
-	  			   }
-	  	  }
-
   }
   /* USER CODE END 3 */
 }
@@ -178,10 +172,14 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_OFF;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -190,12 +188,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -249,41 +247,48 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Slave_Select_GPIO_Port, Slave_Select_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SlaveSelect_GPIO_Port, SlaveSelect_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Led_GPIO_Port, Led_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LEDGREEN_Pin|LEDORANGE_Pin|LEDRED_Pin|LEDBLUE_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PA1 SlaveSelect_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|SlaveSelect_Pin;
+  /*Configure GPIO pin : Slave_Select_Pin */
+  GPIO_InitStruct.Pin = Slave_Select_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(Slave_Select_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  /*Configure GPIO pin : ECHO_Pin */
+  GPIO_InitStruct.Pin = ECHO_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(ECHO_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : Led_Pin */
-  GPIO_InitStruct.Pin = Led_Pin;
+  /*Configure GPIO pin : TRIG_Pin */
+  GPIO_InitStruct.Pin = TRIG_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(Led_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(TRIG_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LEDGREEN_Pin LEDORANGE_Pin LEDRED_Pin LEDBLUE_Pin */
+  GPIO_InitStruct.Pin = LEDGREEN_Pin|LEDORANGE_Pin|LEDRED_Pin|LEDBLUE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
 }
 
 /* USER CODE BEGIN 4 */
-
 /* USER CODE END 4 */
 
 /**
