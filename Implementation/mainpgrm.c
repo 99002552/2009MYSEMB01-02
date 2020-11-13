@@ -8,7 +8,7 @@
 #include <linux/spi/spidev.h>       // All the functions -- spi read,spi write
 #include <linux/types.h>
 #include <fcntl.h>
-#include "pushAndLed.h" 	    // The code related to push button and led
+#include "pushandled.h" 	    // The code related to push button and led
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a)[0])
 
